@@ -80,7 +80,10 @@ struct [[nodiscard]] SqlAwaiter : public CallbackAwaiter<Result>
 struct [[nodiscard]] TransactionAwaiter
     : public CallbackAwaiter<std::shared_ptr<Transaction> >
 {
-    TransactionAwaiter(DbClient *client) : client_(client)
+    TransactionAwaiter(
+        DbClient *client,
+        TransactionIsolationLevel isolationLevel = DATABASE_DEFAULT)
+        : client_(client), isolationLevel(isolationLevel)
     {
     }
 
@@ -88,6 +91,7 @@ struct [[nodiscard]] TransactionAwaiter
 
   private:
     DbClient *client_;
+    TransactionIsolationLevel isolationLevel;
 };
 
 #endif
@@ -265,9 +269,10 @@ class DROGON_EXPORT DbClient : public trantor::NonCopyable
         TransactionIsolationLevel isolationLevel = DATABASE_DEFAULT) = 0;
 
 #ifdef __cpp_impl_coroutine
-    orm::internal::TransactionAwaiter newTransactionCoro()
+    orm::internal::TransactionAwaiter newTransactionCoro(
+        TransactionIsolationLevel isolationLevel = DATABASE_DEFAULT)
     {
-        return orm::internal::TransactionAwaiter(this);
+        return orm::internal::TransactionAwaiter(this, isolationLevel);
     }
 #endif
 
@@ -389,7 +394,8 @@ inline void internal::TransactionAwaiter::await_suspend(
             else
                 setValue(transaction);
             handle.resume();
-        });
+        },
+        isolationLevel);
 }
 #endif
 
