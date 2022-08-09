@@ -251,7 +251,8 @@ class DROGON_EXPORT DbClient : public trantor::NonCopyable
     virtual std::shared_ptr<Transaction> newTransaction(
         const std::function<void(bool)> &commitCallback =
             std::function<void(bool)>(),
-        TransactionIsolationLevel isolationLevel) noexcept(false) = 0;
+        TransactionIsolationLevel isolationLevel =
+            DATABASE_DEFAULT) noexcept(false) = 0;
 
     /// Create a transaction object in asynchronous mode.
     /**
@@ -261,7 +262,7 @@ class DROGON_EXPORT DbClient : public trantor::NonCopyable
     virtual void newTransactionAsync(
         const std::function<void(const std::shared_ptr<Transaction> &)>
             &callback,
-        TransactionIsolationLevel isolationLevel) = 0;
+        TransactionIsolationLevel isolationLevel = DATABASE_DEFAULT) = 0;
 
 #ifdef __cpp_impl_coroutine
     orm::internal::TransactionAwaiter newTransactionCoro()
