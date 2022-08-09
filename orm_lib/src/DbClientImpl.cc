@@ -216,7 +216,8 @@ void DbClientImpl::execSql(
     }
 }
 void DbClientImpl::newTransactionAsync(
-    const std::function<void(const std::shared_ptr<Transaction> &)> &callback)
+    const std::function<void(const std::shared_ptr<Transaction> &)> &callback,
+    TransactionIsolationLevel isolationLevel)
 {
     DbConnectionPtr conn;
     {
@@ -277,16 +278,21 @@ void DbClientImpl::newTransactionAsync(
     {
         makeTrans(conn,
                   std::function<void(const std::shared_ptr<Transaction> &)>(
-                      callback));
+                      callback),
+                  isolationLevel);
     }
 }
 void DbClientImpl::makeTrans(
     const DbConnectionPtr &conn,
-    std::function<void(const std::shared_ptr<Transaction> &)> &&callback)
+    std::function<void(const std::shared_ptr<Transaction> &)> &&callback,
+    TransactionIsolationLevel isolationLevel)
 {
     std::weak_ptr<DbClientImpl> weakThis = shared_from_this();
     auto trans = std::shared_ptr<TransactionImpl>(new TransactionImpl(
-        type_, conn, std::function<void(bool)>(), [weakThis, conn]() {
+        type_,
+        conn,
+        std::function<void(bool)>(),
+        [weakThis, conn]() {
             auto thisPtr = weakThis.lock();
             if (!thisPtr)
                 return;
@@ -324,7 +330,8 @@ void DbClientImpl::makeTrans(
                 });
                 thisPtr->handleNewTask(conn);
             });
-        }));
+        },
+        isolationLevel));
     trans->doBegin();
     if (timeout_ > 0.0)
     {
@@ -334,13 +341,16 @@ void DbClientImpl::makeTrans(
         [callback = std::move(callback), trans]() { callback(trans); });
 }
 std::shared_ptr<Transaction> DbClientImpl::newTransaction(
-    const std::function<void(bool)> &commitCallback) noexcept(false)
+    const std::function<void(bool)> &commitCallback,
+    TransactionIsolationLevel isolationLevel) noexcept(false)
 {
     std::promise<std::shared_ptr<Transaction>> pro;
     auto f = pro.get_future();
-    newTransactionAsync([&pro](const std::shared_ptr<Transaction> &trans) {
-        pro.set_value(trans);
-    });
+    newTransactionAsync(
+        [&pro](const std::shared_ptr<Transaction> &trans) {
+            pro.set_value(trans);
+        },
+        isolationLevel);
     auto trans = f.get();
     if (!trans)
     {

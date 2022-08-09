@@ -24,11 +24,13 @@ TransactionImpl::TransactionImpl(
     ClientType type,
     const DbConnectionPtr &connPtr,
     const std::function<void(bool)> &commitCallback,
-    const std::function<void()> &usedUpCallback)
+    const std::function<void()> &usedUpCallback,
+    TransactionIsolationLevel isolationLevel)
     : connectionPtr_(connPtr),
       usedUpCallback_(usedUpCallback),
       loop_(connPtr->loop()),
-      commitCallback_(commitCallback)
+      commitCallback_(commitCallback),
+      isolationLevel(isolationLevel)
 {
     type_ = type;
 }
@@ -266,7 +268,16 @@ void TransactionImpl::execNewTask()
 
 void TransactionImpl::doBegin()
 {
-    loop_->queueInLoop([thisPtr = shared_from_this()]() {
+    std::string sql;
+    if (isolationLevel == DATABASE_DEFAULT)
+    {
+        sql = "begin";
+    }
+    else
+    {
+        sql = "begin transaction isolation level " + isolationLevelString();
+    }
+    loop_->queueInLoop([thisPtr = shared_from_this(), sql = std::move(sql)]() {
         std::weak_ptr<TransactionImpl> weakPtr = thisPtr;
         thisPtr->connectionPtr_->setIdleCallback([weakPtr]() {
             auto thisPtr = weakPtr.lock();
@@ -279,7 +290,7 @@ void TransactionImpl::doBegin()
         thisPtr->isWorking_ = true;
         thisPtr->thisPtr_ = thisPtr;
         thisPtr->connectionPtr_->execSql(
-            "begin",
+            sql,
             0,
             std::vector<const char *>(),
             std::vector<int>(),
@@ -387,4 +398,22 @@ void TransactionImpl::execSqlInLoopWithTimeout(
         *commandPtr = cmdPtr;
     }
     timeoutFlagPtr->runTimer();
+}
+
+std::string TransactionImpl::isolationLevelString()
+{
+    switch (isolationLevel)
+    {
+        case READ_UNCOMMITTED:
+            return "read uncommitted";
+        case READ_COMMITTED:
+            return "read committed";
+        case REPEATABLE_READ:
+            return "repeatable read";
+        case SERIALIZABLE:
+            return "serializable";
+        case DATABASE_DEFAULT:
+            throw std::logic_error(
+                "no representation for default isolation level");
+    }
 }

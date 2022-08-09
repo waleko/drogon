@@ -41,6 +41,14 @@ using ResultCallback = std::function<void(const Result &)>;
 using ExceptionCallback = std::function<void(const DrogonDbException &)>;
 
 class Transaction;
+enum TransactionIsolationLevel
+{
+    READ_UNCOMMITTED,
+    READ_COMMITTED,
+    REPEATABLE_READ,
+    SERIALIZABLE,
+    DATABASE_DEFAULT
+};
 class DbClient;
 
 namespace internal
@@ -242,7 +250,8 @@ class DROGON_EXPORT DbClient : public trantor::NonCopyable
      */
     virtual std::shared_ptr<Transaction> newTransaction(
         const std::function<void(bool)> &commitCallback =
-            std::function<void(bool)>()) noexcept(false) = 0;
+            std::function<void(bool)>(),
+        TransactionIsolationLevel isolationLevel) noexcept(false) = 0;
 
     /// Create a transaction object in asynchronous mode.
     /**
@@ -251,7 +260,8 @@ class DROGON_EXPORT DbClient : public trantor::NonCopyable
      */
     virtual void newTransactionAsync(
         const std::function<void(const std::shared_ptr<Transaction> &)>
-            &callback) = 0;
+            &callback,
+        TransactionIsolationLevel isolationLevel) = 0;
 
 #ifdef __cpp_impl_coroutine
     orm::internal::TransactionAwaiter newTransactionCoro()

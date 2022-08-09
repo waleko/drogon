@@ -55,10 +55,12 @@ class DbClientLockFree : public DbClient,
                      &&exceptCallback) override;
     std::shared_ptr<Transaction> newTransaction(
         const std::function<void(bool)> &commitCallback =
-            std::function<void(bool)>()) noexcept(false) override;
+            std::function<void(bool)>(),
+        TransactionIsolationLevel = DATABASE_DEFAULT) noexcept(false) override;
     void newTransactionAsync(
         const std::function<void(const std::shared_ptr<Transaction> &)>
-            &callback) override;
+            &callback,
+        TransactionIsolationLevel isolationLevel = DATABASE_DEFAULT) override;
     bool hasAvailableConnections() const noexcept override;
     void setTimeout(double timeout) override
     {
@@ -84,7 +86,8 @@ class DbClientLockFree : public DbClient,
 
     void makeTrans(
         const DbConnectionPtr &conn,
-        std::function<void(const std::shared_ptr<Transaction> &)> &&callback);
+        std::function<void(const std::shared_ptr<Transaction> &)> &&callback,
+        TransactionIsolationLevel isolationLevel = DATABASE_DEFAULT);
     void execSqlWithTimeout(
         const char *sql,
         size_t sqlLength,

@@ -30,7 +30,8 @@ class TransactionImpl : public Transaction,
     TransactionImpl(ClientType type,
                     const DbConnectionPtr &connPtr,
                     const std::function<void(bool)> &commitCallback,
-                    const std::function<void()> &usedUpCallback);
+                    const std::function<void()> &usedUpCallback,
+                    TransactionIsolationLevel isolationLevel);
     ~TransactionImpl();
     void rollback() override;
     void setCommitCallback(
@@ -108,14 +109,16 @@ class TransactionImpl : public Transaction,
         ResultCallback &&rcb,
         std::function<void(const std::exception_ptr &)> &&exceptCallback);
     std::shared_ptr<Transaction> newTransaction(
-        const std::function<void(bool)> &) noexcept(false) override
+        const std::function<void(bool)> &,
+        TransactionIsolationLevel) noexcept(false) override
     {
         return shared_from_this();
     }
 
     void newTransactionAsync(
         const std::function<void(const std::shared_ptr<Transaction> &)>
-            &callback) override
+            &callback,
+        TransactionIsolationLevel) override
     {
         callback(shared_from_this());
     }
@@ -145,6 +148,8 @@ class TransactionImpl : public Transaction,
     std::function<void(bool)> commitCallback_;
     std::shared_ptr<TransactionImpl> thisPtr_;
     double timeout_{-1.0};
+    std::string isolationLevelString();
+    TransactionIsolationLevel isolationLevel;
 };
 }  // namespace orm
 }  // namespace drogon

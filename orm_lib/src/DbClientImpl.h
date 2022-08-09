@@ -52,10 +52,13 @@ class DbClientImpl : public DbClient,
                      &&exceptCallback) override;
     std::shared_ptr<Transaction> newTransaction(
         const std::function<void(bool)> &commitCallback =
-            std::function<void(bool)>()) noexcept(false) override;
+            std::function<void(bool)>(),
+        TransactionIsolationLevel isolationLevel =
+            DATABASE_DEFAULT) noexcept(false) override;
     void newTransactionAsync(
         const std::function<void(const std::shared_ptr<Transaction> &)>
-            &callback) override;
+            &callback,
+        TransactionIsolationLevel isolationLevel = DATABASE_DEFAULT) override;
     bool hasAvailableConnections() const noexcept override;
     void setTimeout(double timeout) override
     {
@@ -86,7 +89,8 @@ class DbClientImpl : public DbClient,
 
     void makeTrans(
         const DbConnectionPtr &conn,
-        std::function<void(const std::shared_ptr<Transaction> &)> &&callback);
+        std::function<void(const std::shared_ptr<Transaction> &)> &&callback,
+        TransactionIsolationLevel isolationLevel = DATABASE_DEFAULT);
 
     mutable std::mutex connectionsMutex_;
     std::unordered_set<DbConnectionPtr> connections_;

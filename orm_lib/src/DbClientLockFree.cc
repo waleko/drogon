@@ -233,7 +233,8 @@ void DbClientLockFree::execSql(
 }
 
 std::shared_ptr<Transaction> DbClientLockFree::newTransaction(
-    const std::function<void(bool)> &) noexcept(false)
+    const std::function<void(bool)> &,
+    TransactionIsolationLevel) noexcept(false)
 {
     // Don't support transaction;
     LOG_ERROR
@@ -244,7 +245,8 @@ std::shared_ptr<Transaction> DbClientLockFree::newTransaction(
 }
 
 void DbClientLockFree::newTransactionAsync(
-    const std::function<void(const std::shared_ptr<Transaction> &)> &callback)
+    const std::function<void(const std::shared_ptr<Transaction> &)> &callback,
+    TransactionIsolationLevel isolationLevel)
 {
     loop_->assertInLoopThread();
     for (auto &conn : connections_)
@@ -253,7 +255,8 @@ void DbClientLockFree::newTransactionAsync(
         {
             makeTrans(conn,
                       std::function<void(const std::shared_ptr<Transaction> &)>(
-                          callback));
+                          callback),
+                      isolationLevel);
             return;
         }
     }
@@ -300,11 +303,15 @@ void DbClientLockFree::newTransactionAsync(
 
 void DbClientLockFree::makeTrans(
     const DbConnectionPtr &conn,
-    std::function<void(const std::shared_ptr<Transaction> &)> &&callback)
+    std::function<void(const std::shared_ptr<Transaction> &)> &&callback,
+    TransactionIsolationLevel isolationLevel)
 {
     std::weak_ptr<DbClientLockFree> weakThis = shared_from_this();
     auto trans = std::shared_ptr<TransactionImpl>(new TransactionImpl(
-        type_, conn, std::function<void(bool)>(), [weakThis, conn]() {
+        type_,
+        conn,
+        std::function<void(bool)>(),
+        [weakThis, conn, isolationLevel]() {
             auto thisPtr = weakThis.lock();
             if (!thisPtr)
                 return;
@@ -317,7 +324,7 @@ void DbClientLockFree::makeTrans(
             {
                 auto callback = std::move(thisPtr->transCallbacks_.front());
                 thisPtr->transCallbacks_.pop_front();
-                thisPtr->makeTrans(conn, std::move(*callback));
+                thisPtr->makeTrans(conn, std::move(*callback), isolationLevel);
                 return;
             }
 
@@ -345,7 +352,8 @@ void DbClientLockFree::makeTrans(
                     break;
                 }
             }
-        }));
+        },
+        isolationLevel));
     transSet_.insert(conn);
     trans->doBegin();
     if (timeout_ > 0.0)
