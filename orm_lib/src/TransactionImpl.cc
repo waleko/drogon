@@ -289,6 +289,7 @@ void TransactionImpl::doBegin()
         assert(!thisPtr->isCommitedOrRolledback_);
         thisPtr->isWorking_ = true;
         thisPtr->thisPtr_ = thisPtr;
+        LOG_DEBUG << sql << '\n';
         thisPtr->connectionPtr_->execSql(
             sql,
             0,
