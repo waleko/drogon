@@ -291,7 +291,7 @@ void TransactionImpl::doBegin()
         thisPtr->thisPtr_ = thisPtr;
         LOG_DEBUG << sql << '\n';
         thisPtr->connectionPtr_->execSql(
-            std::move(sql),
+            "begin",
             0,
             std::vector<const char *>(),
             std::vector<int>(),
