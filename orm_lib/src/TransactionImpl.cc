@@ -277,7 +277,7 @@ void TransactionImpl::doBegin()
     {
         sql = "begin transaction isolation level " + isolationLevelString();
     }
-    loop_->queueInLoop([thisPtr = shared_from_this(), sql]() {
+    loop_->queueInLoop([thisPtr = shared_from_this(), sql = std::move(sql)]() {
         std::weak_ptr<TransactionImpl> weakPtr = thisPtr;
         thisPtr->connectionPtr_->setIdleCallback([weakPtr]() {
             auto thisPtr = weakPtr.lock();
@@ -291,7 +291,7 @@ void TransactionImpl::doBegin()
         thisPtr->thisPtr_ = thisPtr;
         LOG_DEBUG << sql << '\n';
         thisPtr->connectionPtr_->execSql(
-            "begin",
+            std::string_view{sql},
             0,
             std::vector<const char *>(),
             std::vector<int>(),
